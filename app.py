@@ -690,6 +690,7 @@ if page == "Overview":
 # 10. VIDEO INTELLIGENCE
 # ==========================================
 
+
 elif page == "Video Intelligence":
 
     st.markdown(
@@ -697,32 +698,45 @@ elif page == "Video Intelligence":
         unsafe_allow_html=True
     )
 
-    if PROCESSED_VIDEO.exists():
+    st.markdown("### 🎬 GTA VI Video Analyzer")
 
-        st.markdown(
-            '<span class="status-pill">● AI PROCESSED VIDEO</span>',
-            unsafe_allow_html=True
+    uploaded_video = st.file_uploader(
+        "Upload your processed GTA gameplay video",
+        type=["mp4", "mov", "avi"],
+        key="gameplay_video"
+    )
+
+    if uploaded_video is not None:
+
+        st.success("AI processed video uploaded successfully!")
+
+        st.video(uploaded_video)
+
+        st.caption(
+            "YOLO11 Detection · ByteTrack Tracking · "
+            "Confidence Scores"
         )
 
-        st.write("")
+    elif PROCESSED_VIDEO.exists():
+
+        st.success("AI Processed Video Available")
 
         st.video(str(PROCESSED_VIDEO))
 
-        st.caption(
-            "YOLO11 object detection · ByteTrack tracking · "
-            "Confidence scores and tracking IDs"
-        )
-
     else:
 
-        st.warning("Processed video not found.")
+        st.info(
+            "No demo video available. "
+            "Upload your processed GTA gameplay video above."
+        )
+
+    st.divider()
 
     if ORIGINAL_VIDEO.exists():
 
         with st.expander("View Original GTA Gameplay"):
 
             st.video(str(ORIGINAL_VIDEO))
-
 
 
 # ==========================================
