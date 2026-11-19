@@ -1,0 +1,34 @@
+
+========================================
+VICE CITY CHAOS INTELLIGENCE REPORT
+========================================
+
+Total analyzed intervals: 184
+
+Average Chaos Score:
+47.09/100
+
+Maximum Chaos Score:
+78.46/100
+
+Minimum Chaos Score:
+26.06/100
+
+Peak Chaos Timestamp:
+8.67 seconds
+
+Peak Chaos Level:
+Very High
+
+Average Motion Score:
+62.15
+
+Average Crowd Score:
+41.41
+
+Average Vehicle Score:
+39.46
+
+========================================
+ANALYSIS COMPLETED
+========================================
