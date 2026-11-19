@@ -1,0 +1,23 @@
+
+# Python cache
+__pycache__/
+*.py[cod]
+
+# Virtual environments
+.venv/
+venv/
+
+# Private configuration
+.env
+
+# Model weights
+*.pt
+
+# Original gameplay videos
+data/sample_videos/*.mp4
+
+# Generated processed videos
+outputs/videos/*.mp4
+
+# Temporary files
+*.tmp
