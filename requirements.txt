@@ -7,3 +7,4 @@ opencv-python
 ultralytics
 torch
 imageio-ffmpeg
+lap>=0.5.12
