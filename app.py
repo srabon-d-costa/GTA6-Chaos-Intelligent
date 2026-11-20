@@ -1,4 +1,6 @@
+import uuid
 
+from src.dynamic_pipeline import analyze_video
 import streamlit as st
 import pandas as pd
 import plotly.express as px
@@ -532,7 +534,7 @@ if page == "Overview":
 
         st.plotly_chart(
             gauge,
-            use_container_width=True
+            width="stretch"
         )
 
     with right:
@@ -585,7 +587,7 @@ if page == "Overview":
 
         st.plotly_chart(
             style_chart(fig, 340),
-            use_container_width=True
+            width="stretch"
         )
 
     # Object distribution
@@ -626,7 +628,7 @@ if page == "Overview":
 
             st.plotly_chart(
                 style_chart(fig),
-                use_container_width=True
+                width="stretch"
             )
 
         else:
@@ -665,7 +667,7 @@ if page == "Overview":
 
         st.plotly_chart(
             style_chart(fig),
-            use_container_width=True
+            width="stretch"
         )
 
     # Peak moments
@@ -681,62 +683,334 @@ if page == "Overview":
 
         st.dataframe(
             peaks,
-            use_container_width=True,
+            width="stretch",
             hide_index=True
         )
 
 
-# ==========================================
-# 10. VIDEO INTELLIGENCE
-# ==========================================
 
+# ==========================================
+# DYNAMIC VIDEO INTELLIGENCE
+# ==========================================
 
 elif page == "Video Intelligence":
 
     st.markdown(
-        '<div class="section-heading">GAMEPLAY VIDEO ANALYSIS</div>',
+        '<div class="section-heading">'
+        'DYNAMIC GAMEPLAY VIDEO INTELLIGENCE'
+        '</div>',
         unsafe_allow_html=True
     )
 
-    st.markdown("### 🎬 GTA VI Video Analyzer")
+    st.markdown("### 🎬 AI VIDEO ANALYZER")
+
+    st.caption(
+        "Upload any GTA VI gameplay video and generate "
+        "a completely new AI intelligence report."
+    )
 
     uploaded_video = st.file_uploader(
-        "Upload your processed GTA gameplay video",
+        "Upload GTA VI gameplay",
         type=["mp4", "mov", "avi"],
-        key="gameplay_video"
+        key="dynamic_video_upload"
     )
+
+    # Clear stale results when a different video is selected
 
     if uploaded_video is not None:
 
-        st.success("AI processed video uploaded successfully!")
+        upload_signature = (
+            uploaded_video.name,
+            uploaded_video.size
+        )
+
+        if st.session_state.get("upload_signature") != upload_signature:
+
+            st.session_state.pop("dynamic_results", None)
+
+            st.session_state["upload_signature"] = upload_signature
+
+        st.success(
+            f"Selected video: {uploaded_video.name}"
+        )
 
         st.video(uploaded_video)
 
         st.caption(
-            "YOLO11 Detection · ByteTrack Tracking · "
-            "Confidence Scores"
+            f"File size: {uploaded_video.size / (1024 * 1024):.2f} MB"
         )
 
-    elif PROCESSED_VIDEO.exists():
+        st.divider()
 
-        st.success("AI Processed Video Available")
+        if st.button(
+            "🚀 START AI ANALYSIS",
+            width="stretch",
+            type="primary"
+        ):
 
-        st.video(str(PROCESSED_VIDEO))
+            run_id = uuid.uuid4().hex[:8]
 
-    else:
+            run_dir = (
+                ROOT / "outputs" / "dynamic_uploads" / run_id
+            )
 
-        st.info(
-            "No demo video available. "
-            "Upload your processed GTA gameplay video above."
+            run_dir.mkdir(
+                parents=True,
+                exist_ok=True
+            )
+
+            suffix = Path(
+                uploaded_video.name
+            ).suffix.lower()
+
+            if suffix not in [".mp4", ".mov", ".avi"]:
+                st.error("Unsupported video format.")
+                st.stop()
+
+            input_path = run_dir / f"input{suffix}"
+
+            input_path.write_bytes(
+                uploaded_video.getvalue()
+            )
+
+            progress_bar = st.progress(
+                0.0,
+                text="Initializing Vice City AI..."
+            )
+
+            status_text = st.empty()
+
+            def update_progress(value, message):
+
+                progress_bar.progress(
+                    min(max(float(value), 0.0), 1.0),
+                    text=message
+                )
+
+                status_text.caption(message)
+
+            try:
+
+                with st.spinner(
+                    "Vice City AI is analyzing your video..."
+                ):
+
+                    results = analyze_video(
+                        video_path=input_path,
+                        output_dir=run_dir / "analysis",
+                        progress_callback=update_progress,
+                        frame_stride=1,
+                        target_fps=60
+                    )
+
+                st.session_state["dynamic_results"] = results
+
+                progress_bar.progress(
+                    1.0,
+                    text="AI analysis completed!"
+                )
+
+                st.success(
+                    "🎉 New video analysis completed successfully!"
+                )
+
+            except Exception as error:
+
+                st.error("Video analysis failed.")
+
+                st.exception(error)
+
+    # ======================================
+    # DISPLAY DYNAMIC RESULTS
+    # ======================================
+
+    results = st.session_state.get(
+        "dynamic_results"
+    )
+
+    if results is not None:
+
+        metrics = results["metrics"]
+
+        detections = results["detections"]
+
+        peaks = results["peaks"]
+
+        st.divider()
+
+        st.markdown(
+            '<div class="section-heading">'
+            'NEW VIDEO INTELLIGENCE REPORT'
+            '</div>',
+            unsafe_allow_html=True
         )
 
-    st.divider()
+        average_chaos = metrics["chaos_score"].mean()
 
-    if ORIGINAL_VIDEO.exists():
+        maximum_chaos = metrics["chaos_score"].max()
 
-        with st.expander("View Original GTA Gameplay"):
+        peak_row = metrics.loc[
+            metrics["chaos_score"].idxmax()
+        ]
 
-            st.video(str(ORIGINAL_VIDEO))
+        unique_objects = (
+            detections.dropna(
+                subset=["track_id"]
+            ).drop_duplicates(
+                subset=["class", "track_id"]
+            ).shape[0]
+        )
+
+        # ----------------------------------
+        # KPI CARDS
+        # ----------------------------------
+
+        c1, c2, c3, c4 = st.columns(4)
+
+        c1.metric(
+            "Average Chaos",
+            f"{average_chaos:.2f}/100"
+        )
+
+        c2.metric(
+            "Peak Chaos",
+            f"{maximum_chaos:.2f}/100"
+        )
+
+        c3.metric(
+            "Tracked Objects",
+            unique_objects
+        )
+
+        c4.metric(
+            "Peak Timestamp",
+            f"{peak_row['timestamp_sec']:.2f}s"
+        )
+
+        # ----------------------------------
+        # PROCESSED VIDEO
+        # ----------------------------------
+
+        st.markdown("### 🎥 AI Processed Gameplay")
+
+        st.caption(
+            f"Output: {results.get('output_fps', 60)} FPS · "
+            f"{results.get('interpolation_mode', '60 FPS output')}"
+        )
+
+        st.video(results["video"])
+
+        # ----------------------------------
+        # CHAOS TIMELINE
+        # ----------------------------------
+
+        st.markdown("### 📈 Chaos Score Timeline")
+
+        fig = px.line(
+            metrics,
+            x="timestamp_sec",
+            y="chaos_score",
+            title="Video-Specific Chaos Analysis"
+        )
+
+        fig.update_traces(
+            line=dict(
+                color="#00D9FF",
+                width=3
+            ),
+            fill="tozeroy",
+            fillcolor="rgba(0,217,255,0.10)"
+        )
+
+        fig.update_layout(
+            template="plotly_dark",
+            paper_bgcolor="rgba(0,0,0,0)",
+            plot_bgcolor="rgba(0,0,0,0)",
+            yaxis=dict(range=[0, 100])
+        )
+
+        st.plotly_chart(
+            fig,
+            width="stretch"
+        )
+
+        # ----------------------------------
+        # ACTIVITY HEATMAPS
+        # ----------------------------------
+
+        st.markdown("### 🗺️ ACTIVITY HEATMAPS")
+
+        left, right = st.columns(2)
+
+        with left:
+
+            st.markdown("**Crowd Density**")
+
+            st.image(
+                results["crowd_heatmap"],
+                width="stretch"
+            )
+
+        with right:
+
+            st.markdown("**Vehicle Activity**")
+
+            st.image(
+                results["vehicle_heatmap"],
+                width="stretch"
+            )
+
+        # ----------------------------------
+        # PEAK CHAOS MOMENTS
+        # ----------------------------------
+
+        st.markdown("### 🔥 PEAK CHAOS MOMENTS")
+
+        st.dataframe(
+            peaks,
+            width="stretch",
+            hide_index=True
+        )
+
+        # ----------------------------------
+        # DOWNLOAD CENTER
+        # ----------------------------------
+
+        st.markdown("### 📥 DOWNLOAD REPORTS")
+
+        d1, d2, d3 = st.columns(3)
+
+        with d1:
+
+            st.download_button(
+                "Chaos Summary",
+                data=results["summary"],
+                file_name="chaos_summary.txt",
+                mime="text/plain"
+            )
+
+        with d2:
+
+            st.download_button(
+                "Detection CSV",
+                data=detections.to_csv(
+                    index=False
+                ),
+                file_name="detection_results.csv",
+                mime="text/csv"
+            )
+
+        with d3:
+
+            st.download_button(
+                "Chaos Scores CSV",
+                data=metrics.to_csv(
+                    index=False
+                ),
+                file_name="chaos_scores.csv",
+                mime="text/csv"
+            )
+
 
 
 # ==========================================
@@ -842,7 +1116,7 @@ elif page == "Object Analytics":
 
             st.plotly_chart(
                 fig,
-                use_container_width=True,
+                width="stretch",
                 config={"displayModeBar": False}
             )
 
@@ -899,7 +1173,7 @@ elif page == "Object Analytics":
 
         st.plotly_chart(
             fig,
-            use_container_width=True,
+            width="stretch",
             config={"displayModeBar": False}
         )
 
@@ -913,7 +1187,7 @@ elif page == "Object Analytics":
 
         st.dataframe(
             detections.head(200),
-            use_container_width=True,
+            width="stretch",
             hide_index=True
         )
 
@@ -964,7 +1238,7 @@ elif page == "Motion Intelligence":
 
     st.plotly_chart(
         style_chart(fig, 480),
-        use_container_width=True
+        width="stretch"
     )
 
     c1, c2, c3 = st.columns(3)
@@ -1006,7 +1280,7 @@ elif page == "Heatmap Analysis":
 
             st.image(
                 str(CROWD_HEATMAP),
-                use_container_width=True
+                width="stretch"
             )
 
         else:
@@ -1021,7 +1295,7 @@ elif page == "Heatmap Analysis":
 
             st.image(
                 str(VEHICLE_HEATMAP),
-                use_container_width=True
+                width="stretch"
             )
 
         else:
@@ -1092,7 +1366,7 @@ elif page == "Chaos Intelligence":
 
         st.plotly_chart(
             gauge,
-            use_container_width=True
+            width="stretch"
         )
 
     fig = px.area(
@@ -1109,7 +1383,7 @@ elif page == "Chaos Intelligence":
 
     st.plotly_chart(
         style_chart(fig, 430),
-        use_container_width=True
+        width="stretch"
     )
 
     if "chaos_level" in chaos.columns:
@@ -1136,7 +1410,7 @@ elif page == "Chaos Intelligence":
 
         st.plotly_chart(
             style_chart(fig),
-            use_container_width=True
+            width="stretch"
         )
 
 

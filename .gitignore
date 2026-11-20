@@ -1,23 +1,85 @@
 
+# ==========================================
+# GTA6 CHAOS INTELLIGENT - GITIGNORE
+# ==========================================
+
 # Python cache
 __pycache__/
 *.py[cod]
+*$py.class
 
 # Virtual environments
 .venv/
 venv/
+env/
+ENV/
 
-# Private configuration
+# IDE settings
+.vscode/
+.idea/
+
+# Operating system files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Environment variables and secrets
 .env
+.env.*
+!.env.example
 
-# Model weights
+# ==========================================
+# DEEP LEARNING MODEL WEIGHTS
+# ==========================================
+
 *.pt
+*.pth
+*.onnx
+*.engine
 
-# Original gameplay videos
+# ==========================================
+# ORIGINAL GAMEPLAY VIDEOS
+# ==========================================
+
 data/sample_videos/*.mp4
+data/sample_videos/*.mov
+data/sample_videos/*.avi
+data/sample_videos/*.mkv
 
-# Generated processed videos
+# ==========================================
+# GENERATED PROCESSED VIDEOS
+# ==========================================
+
 outputs/videos/*.mp4
+outputs/videos/*.mov
+outputs/videos/*.avi
+outputs/videos/*.mkv
 
-# Temporary files
+# ==========================================
+# DYNAMIC VIDEO UPLOADS
+# ==========================================
+
+outputs/dynamic_uploads/
+outputs/dynamic_test/
+
+# ==========================================
+# STREAMLIT SECRETS
+# ==========================================
+
+.streamlit/secrets.toml
+.streamlit/credentials.toml
+
+# ==========================================
+# LOGS AND TEMPORARY FILES
+# ==========================================
+
+*.log
 *.tmp
+*.temp
+*.part
+
+# ==========================================
+# JUPYTER CHECKPOINTS
+# ==========================================
+
+.ipynb_checkpoints/

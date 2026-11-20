@@ -1,3 +1,9 @@
+
 streamlit
 pandas
 plotly
+numpy
+opencv-python
+ultralytics
+torch
+imageio-ffmpeg
