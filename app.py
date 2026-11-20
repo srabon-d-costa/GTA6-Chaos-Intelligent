@@ -227,34 +227,75 @@ def load_csv(path):
     return pd.read_csv(path)
 
 
-required_files = [
-    CHAOS_PATH,
-    ACTIVITY_PATH,
-    DETECTION_PATH
-]
+# Use the latest analyzed upload across the entire dashboard.
+# If no upload exists in this session, use the original sample reports.
 
-missing = [
-    str(p) for p in required_files
-    if not p.exists()
-]
+dynamic_results = st.session_state.get("dynamic_results")
 
-if missing:
+if dynamic_results is not None:
 
-    st.error("Analysis files are missing.")
+    chaos = dynamic_results["chaos"]
+    activity = dynamic_results["metrics"]
+    detections = dynamic_results["detections"]
+    active_peaks = dynamic_results["peaks"]
 
-    for file in missing:
-        st.write(file)
+    active_crowd_heatmap = Path(dynamic_results["crowd_heatmap"])
+    active_vehicle_heatmap = Path(dynamic_results["vehicle_heatmap"])
 
-    st.stop()
+    active_summary = dynamic_results["summary"]
+    active_video_name = dynamic_results.get(
+        "video_name",
+        "Latest uploaded video"
+    )
 
+    data_source_label = f"LATEST VIDEO: {active_video_name}"
 
-chaos = load_csv(str(CHAOS_PATH))
-activity = load_csv(str(ACTIVITY_PATH))
-detections = load_csv(str(DETECTION_PATH))
+else:
+
+    required_files = [
+        CHAOS_PATH,
+        ACTIVITY_PATH,
+        DETECTION_PATH
+    ]
+
+    missing = [
+        str(p) for p in required_files
+        if not p.exists()
+    ]
+
+    if missing:
+        st.error("Analysis files are missing.")
+        for file in missing:
+            st.write(file)
+        st.stop()
+
+    chaos = load_csv(str(CHAOS_PATH))
+    activity = load_csv(str(ACTIVITY_PATH))
+    detections = load_csv(str(DETECTION_PATH))
+
+    active_peaks = (
+        load_csv(str(PEAK_PATH))
+        if PEAK_PATH.exists()
+        else pd.DataFrame()
+    )
+
+    active_crowd_heatmap = CROWD_HEATMAP
+    active_vehicle_heatmap = VEHICLE_HEATMAP
+
+    active_summary = (
+        SUMMARY_PATH.read_text(encoding="utf-8")
+        if SUMMARY_PATH.exists()
+        else "No static summary report is available."
+    )
+
+    active_video_name = "Original sample analysis"
+    data_source_label = "ORIGINAL SAMPLE VIDEO ANALYSIS"
+
 
 if chaos.empty or activity.empty or detections.empty:
-    st.error("Analysis files contain no data.")
+    st.error("The selected analysis contains no data.")
     st.stop()
+
 
 # ==========================================
 # 4. PREPARE STATISTICS
@@ -421,6 +462,8 @@ st.markdown(
     """,
     unsafe_allow_html=True
 )
+
+st.caption(f"ACTIVE DATA SOURCE: {data_source_label}")
 
 # ==========================================
 # 9. OVERVIEW PAGE
@@ -677,15 +720,17 @@ if page == "Overview":
         unsafe_allow_html=True
     )
 
-    if PEAK_PATH.exists():
-
-        peaks = load_csv(str(PEAK_PATH))
+    if not active_peaks.empty:
 
         st.dataframe(
-            peaks,
+            active_peaks,
             width="stretch",
             hide_index=True
         )
+
+    else:
+
+        st.info("No peak-chaos moments are available for this analysis.")
 
 
 
@@ -803,6 +848,7 @@ elif page == "Video Intelligence":
                         target_fps=60
                     )
 
+                results["video_name"] = uploaded_video.name
                 st.session_state["dynamic_results"] = results
 
                 progress_bar.progress(
@@ -1276,10 +1322,10 @@ elif page == "Heatmap Analysis":
 
         st.markdown("#### 👥 Crowd Density")
 
-        if CROWD_HEATMAP.exists():
+        if active_crowd_heatmap.exists():
 
             st.image(
-                str(CROWD_HEATMAP),
+                str(active_crowd_heatmap),
                 width="stretch"
             )
 
@@ -1291,10 +1337,10 @@ elif page == "Heatmap Analysis":
 
         st.markdown("#### 🚗 Vehicle Activity")
 
-        if VEHICLE_HEATMAP.exists():
+        if active_vehicle_heatmap.exists():
 
             st.image(
-                str(VEHICLE_HEATMAP),
+                str(active_vehicle_heatmap),
                 width="stretch"
             )
 
@@ -1425,39 +1471,108 @@ elif page == "Reports":
         unsafe_allow_html=True
     )
 
-    report_files = {
-        "Chaos Scores": CHAOS_PATH,
-        "Activity Metrics": ACTIVITY_PATH,
-        "Detection Results": DETECTION_PATH,
-        "Peak Chaos Moments": PEAK_PATH
-    }
+    st.caption(f"Reports for: {active_video_name}")
 
-    for name, path in report_files.items():
+    if dynamic_results is not None:
 
-        if path.exists():
+        st.markdown("### Latest Video Intelligence Report")
 
-            with open(path, "rb") as file:
+        d1, d2 = st.columns(2)
 
-                st.download_button(
-                    label=f"⬇ Download {name}",
-                    data=file.read(),
-                    file_name=path.name,
-                    mime="text/csv",
-                    key=f"download_{name}"
-                )
+        with d1:
+            st.download_button(
+                label="⬇ Download Chaos Summary",
+                data=active_summary,
+                file_name="chaos_summary.txt",
+                mime="text/plain",
+                key="dynamic_download_summary",
+                width="stretch"
+            )
 
-    st.divider()
+            st.download_button(
+                label="⬇ Download Detection Results",
+                data=detections.to_csv(index=False),
+                file_name="detection_results.csv",
+                mime="text/csv",
+                key="dynamic_download_detections",
+                width="stretch"
+            )
 
-    if SUMMARY_PATH.exists():
+        with d2:
+            st.download_button(
+                label="⬇ Download Activity Metrics",
+                data=activity.to_csv(index=False),
+                file_name="activity_metrics.csv",
+                mime="text/csv",
+                key="dynamic_download_activity",
+                width="stretch"
+            )
+
+            st.download_button(
+                label="⬇ Download Chaos Scores",
+                data=chaos.to_csv(index=False),
+                file_name="chaos_scores.csv",
+                mime="text/csv",
+                key="dynamic_download_chaos",
+                width="stretch"
+            )
+
+        st.download_button(
+            label="⬇ Download Peak Chaos Moments",
+            data=active_peaks.to_csv(index=False),
+            file_name="peak_chaos_moments.csv",
+            mime="text/csv",
+            key="dynamic_download_peaks",
+            width="stretch"
+        )
 
         st.markdown("### Chaos Intelligence Summary")
+        st.code(active_summary, language="text")
 
-        st.code(
-            SUMMARY_PATH.read_text(
-                encoding="utf-8"
-            ),
-            language="text"
+        st.markdown("### Peak Chaos Moments")
+        st.dataframe(
+            active_peaks,
+            width="stretch",
+            hide_index=True
         )
+
+    else:
+
+        report_files = {
+            "Chaos Scores": CHAOS_PATH,
+            "Activity Metrics": ACTIVITY_PATH,
+            "Detection Results": DETECTION_PATH,
+            "Peak Chaos Moments": PEAK_PATH
+        }
+
+        for name, path in report_files.items():
+
+            if path.exists():
+
+                with open(path, "rb") as file:
+
+                    st.download_button(
+                        label=f"⬇ Download {name}",
+                        data=file.read(),
+                        file_name=path.name,
+                        mime="text/csv",
+                        key=f"download_{name}",
+                        width="stretch"
+                    )
+
+        st.divider()
+
+        if SUMMARY_PATH.exists():
+
+            st.markdown("### Chaos Intelligence Summary")
+
+            st.code(
+                SUMMARY_PATH.read_text(
+                    encoding="utf-8"
+                ),
+                language="text"
+            )
+
 
 # ==========================================
 # 16. FOOTER
